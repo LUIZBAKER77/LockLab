@@ -1,10 +1,19 @@
-# =========================
+﻿# =========================
 # LockLab - versão estável
 # =========================
 
-$LAB_USER   = "DOMINIO\aluno"
-$TOOLS_PATH = "C:\LabTools"
-$HOME_URL   = "https://portal.exemplo.edu.br"
+param(
+    # Conta usada pelos alunos, no formato DOMINIO\usuario
+    [Parameter(Mandatory)] [string] $LabUser,
+    # Página aberta pelos atalhos do Chrome e do Edge
+    [Parameter(Mandatory)] [string] $HomeUrl,
+    [string] $ToolsPath = "C:\LabTools"
+)
+
+$LAB_USER   = $LabUser
+$TOOLS_PATH = $ToolsPath
+$HOME_URL   = $HomeUrl
+$labName    = $LAB_USER.Split("\")[-1]
 
 $ErrorActionPreference = "Stop"
 
@@ -76,8 +85,8 @@ if (Test-Path $edgeExe) {
     Write-Host "  [OK] Atalho Edge criado"
 }
 
-# Substituir atalhos na barra de tarefas do aluno (se o perfil ja existir)
-$labProfile = "C:\Users\aluno"
+# Substituir atalhos na barra de tarefas do usuário do lab (se o perfil ja existir)
+$labProfile = "C:\Users\$labName"
 $taskbarDir = "$labProfile\AppData\Roaming\Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBar"
 
 if (Test-Path $taskbarDir) {
@@ -90,10 +99,10 @@ if (Test-Path $taskbarDir) {
         Write-Host "  [OK] Atalho Edge atualizado na barra de tarefas"
     }
 } else {
-    Write-Host "  [INFO] Perfil aluno ainda nao tem barra configurada - sera atualizado no logon"
+    Write-Host "  [INFO] Perfil $labName ainda nao tem barra configurada - sera atualizado no logon"
 }
 
-# Criar atalhos no Desktop do aluno (como admin, antes de bloquear)
+# Criar atalhos no Desktop do usuário do lab (como admin, antes de bloquear)
 $labDesktop = "$labProfile\Desktop"
 if (Test-Path $labDesktop) {
     if (Test-Path $chromExe) {
@@ -107,7 +116,7 @@ if (Test-Path $labDesktop) {
 
     # =========================
     # BLOQUEAR DESKTOP - apenas admin pode adicionar ou remover atalhos
-    # Nega CreateFiles e Delete para o aluno na pasta Desktop
+    # Nega CreateFiles e Delete para o usuário do lab na pasta Desktop
     # =========================
     Write-Host "Bloqueando Desktop para $LAB_USER..."
 
@@ -116,7 +125,7 @@ if (Test-Path $labDesktop) {
     # Desativar heranca e manter permissoes atuais
     $acl.SetAccessRuleProtection($true, $true)
 
-    # Negar criacao de arquivos/pastas e exclusao para o aluno
+    # Negar criacao de arquivos/pastas e exclusao para o usuário do lab
     $deny = New-Object System.Security.AccessControl.FileSystemAccessRule(
         $LAB_USER,
         [System.Security.AccessControl.FileSystemRights]"CreateFiles,CreateDirectories,Delete,DeleteSubdirectoriesAndFiles,WriteData,AppendData",
@@ -128,7 +137,7 @@ if (Test-Path $labDesktop) {
     Set-Acl -Path $labDesktop -AclObject $acl
     Write-Host "  [OK] Desktop bloqueado - alunos nao podem adicionar ou remover atalhos"
 } else {
-    Write-Host "  [INFO] Desktop do aluno nao encontrado - sera configurado no proximo logon via tarefa"
+    Write-Host "  [INFO] Desktop de $labName nao encontrado - sera configurado no proximo logon via tarefa"
 }
 
 # =========================
@@ -136,8 +145,8 @@ if (Test-Path $labDesktop) {
 # =========================
 
 $cleanup = @'
-$TOOLS_PATH = "C:\LabTools"
-$HOME_URL   = "https://portal.exemplo.edu.br"
+$TOOLS_PATH = "__TOOLS_PATH__"
+$HOME_URL   = "__HOME_URL__"
 
 $chromExe = "${env:ProgramFiles}\Google\Chrome\Application\chrome.exe"
 if (!(Test-Path $chromExe)) { $chromExe = "${env:ProgramFiles(x86)}\Google\Chrome\Application\chrome.exe" }
@@ -190,6 +199,7 @@ Remove-Item "$edge\Default\Cache"   -Recurse -Force -ErrorAction SilentlyContinu
 
 '@
 
+$cleanup = $cleanup.Replace("__TOOLS_PATH__", $TOOLS_PATH).Replace("__HOME_URL__", $HOME_URL)
 $cleanup | Out-File "$TOOLS_PATH\cleanup.ps1" -Encoding UTF8 -Force
 
 # =========================

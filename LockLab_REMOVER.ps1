@@ -1,11 +1,19 @@
-# =========================
+﻿# =========================
 # ANTIDOTO - RESTAURAR SISTEMA
 # =========================
 
+param(
+    # Mesma conta passada ao LockLab.ps1, no formato DOMINIO\usuario
+    [Parameter(Mandatory)] [string] $LabUser,
+    [string] $ToolsPath = "C:\LabTools"
+)
+
 $ErrorActionPreference = "SilentlyContinue"
 
-$LAB_USER   = "DOMINIO\aluno"
-$TOOLS_PATH = "C:\LabTools"
+$LAB_USER   = $LabUser
+$TOOLS_PATH = $ToolsPath
+$labName    = $LAB_USER.Split("\")[-1]
+$labProfile = "C:\Users\$labName"
 
 Write-Host "Iniciando limpeza..."
 
@@ -30,7 +38,7 @@ Unregister-ScheduledTask -TaskName "LabCleanup" -Confirm:$false
 # 3. RESTAURAR PERMISSÕES DO DESKTOP
 # =========================
 
-$labDesktop = "C:\Users\aluno\Desktop"
+$labDesktop = "$labProfile\Desktop"
 
 if (Test-Path $labDesktop) {
     Write-Host "Restaurando permissões do Desktop..."
@@ -42,7 +50,7 @@ if (Test-Path $labDesktop) {
 
     # Remover regras de negação
     $acl.Access | Where-Object {
-        $_.IdentityReference -like "*aluno*" -and $_.AccessControlType -eq "Deny"
+        $_.IdentityReference -like "*$labName*" -and $_.AccessControlType -eq "Deny"
     } | ForEach-Object {
         $acl.RemoveAccessRule($_)
     }
@@ -59,10 +67,10 @@ Write-Host "Removendo atalhos..."
 Remove-Item "$TOOLS_PATH\Google Chrome.lnk" -Force
 Remove-Item "$TOOLS_PATH\Microsoft Edge.lnk" -Force
 
-Remove-Item "C:\Users\aluno\Desktop\Google Chrome.lnk" -Force
-Remove-Item "C:\Users\aluno\Desktop\Microsoft Edge.lnk" -Force
+Remove-Item "$labDesktop\Google Chrome.lnk" -Force
+Remove-Item "$labDesktop\Microsoft Edge.lnk" -Force
 
-$taskbarDir = "C:\Users\aluno\AppData\Roaming\Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBar"
+$taskbarDir = "$labProfile\AppData\Roaming\Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBar"
 
 Remove-Item "$taskbarDir\Google Chrome.lnk" -Force
 Remove-Item "$taskbarDir\Microsoft Edge.lnk" -Force
