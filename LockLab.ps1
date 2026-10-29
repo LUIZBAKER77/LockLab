@@ -6,7 +6,7 @@ param(
     # Conta usada pelos alunos, no formato DOMINIO\usuario
     [Parameter(Mandatory)] [string] $LabUser,
     # Página aberta pelos atalhos do Chrome e do Edge
-    [Parameter(Mandatory)] [string] $HomeUrl,
+    [Parameter(Mandatory)] [ValidatePattern('^https?://[^\s"`$]+$')] [string] $HomeUrl,
     [string] $ToolsPath = "C:\LabTools"
 )
 
